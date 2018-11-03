@@ -1,5 +1,3 @@
-$(document ).ready(function(){
-
 var config = {
   apiKey: "AIzaSyC5fXNHzYfIB4a7GPhaR0KxVWKU4GL_VNU",
   authDomain: "train-scheduler-8d5b4.firebaseapp.com",
@@ -12,32 +10,27 @@ var config = {
 firebase.initializeApp(config);
 
 var database = firebase.database();
-var ref=firebase.database().ref();
+var ref=firebase.database().ref('trains');
 
-$("#submitButton").on("click", function(event){
-    event.preventDefault();
+$("#submitButton").on("click", function (event) {
+  event.preventDefault();
 
   var trainName = $("#trainName").val().trim();
   var destination = $("#destination").val().trim();
+  var firstTime = moment($("#firstTime").val().trim(), "HH:mm").format("");
   var frequency = $("#frequency").val().trim();
 
-  var firstTime =
-  moment($("#firstTime").val().trim(),
-  "hh:mm").subtract(1, "years").format("x");
-
-  var currentTime = moment();
- 
-
   var newTrain = {
-
     train: trainName,
     trainGoing: destination,
     trainComing: firstTime,
     everyXMin: frequency
   };
 
-  var newItem=database.ref().set(newTrain);
-  database.ref().push(newItem);
+  var key = database.ref().child('trains').push().key;
+  var updates = {};
+  updates['/trains/' + key] = newTrain;
+  firebase.database().ref().update(updates);
 
   $("#trainName").val("");
   $("#destination").val("");
@@ -48,26 +41,31 @@ $("#submitButton").on("click", function(event){
 
 });
 
-database.ref().on("child_added", function(childSnapshot, prevChildKey) {
+ref.on("child_added", function (childSnapshot) {
+
+  console.log * (childSnapshot.val());
 
   var trainName = childSnapshot.val().train;
-  var destination =childSnapshot.val().trainGoing;
+  var destination = childSnapshot.val().trainGoing;
   var firstTime = childSnapshot.val().trainComing;
   var frequency = childSnapshot.val().everyXMin;
 
-  var trainTime = moment.unix(firstTime).format("hh:mm");
+  var firstTimeConverted = moment(firstTime, "HH:mm").subtract(1, "years");
 
-  var difference =  moment().diff(moment(trainTime),"minutes");
+  var currentTime = moment();
 
-  var trainRemain = difference % frequency;
+  var diffTime = moment().diff(moment(firstTimeConverted),"minutes");
 
-  var minUntil = frequency - trainRemain;
+  var tRemainder = diffTime % frequency;
 
-  var nextArrival = moment().add(minUntil, "minutes").format('hh:mm');
+  var MinutesTillTrain = frequency -tRemainder;
 
-  $("#trainTable > tbody").append("<tr><td>" + trainName + "</td><td>" + destination + "</td><td>" + frequency + "</td><td>" + nextArrival + "</td><td>" + minUntil + "</td></tr>");
+  var nextTrain = moment().add(MinutesTillTrain, "minutes");
+  var nextTrainConverted = moment(nextTrain).format("hh:mm a");
+
+
+  $("#trainTable > tbody").append("<tr><td>" + trainName + "</td><td>"
+    + destination + "</td><td>" + frequency + "</td><td>" +
+    nextTrainConverted + "</td><td>" + MinutesTillTrain + "</td></tr>");
 
 });
-});
-
-
